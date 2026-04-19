@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="HWG Sim">
+<title>Hardy-Weinberg Simulation</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  color: #1a1a1a;
+  background: #f5f4f0;
+  padding: 1.25rem;
+  -webkit-text-size-adjust: 100%;
+  min-height: 100vh;
+}
+
+h1 {
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 1.25rem;
+  color: #1a1a1a;
+}
+
+/* Installationshinweis — nur sichtbar wenn NICHT als PWA */
+.install-hint {
+  background: #FFF8E7;
+  border: 1px solid #F0C040;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 1rem;
+  font-size: 13px;
+  color: #7A5000;
+  line-height: 1.5;
+}
+.install-hint strong { display: block; margin-bottom: 2px; font-size: 13px; }
+
+.panel {
+  background: #fff;
+  border: 1px solid #d8d6ce;
+  border-radius: 12px;
+  padding: 1.1rem 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.panel-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #888;
+  margin-bottom: 0.75rem;
+}
+
+/* ── Slider ── */
+.slider-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 0.75rem;
+}
+
+.slider-label { font-size: 14px; color: #555; white-space: nowrap; }
+.slider-val   { font-size: 16px; font-weight: 700; min-width: 40px; text-align: right; }
+
+/* Grosses Touch-Target, sauber auf iOS */
+input[type=range] {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1;
+  height: 44px;
+  background: transparent;
+  cursor: pointer;
+  touch-action: pan-x;
+}
+input[type=range]::-webkit-slider-runnable-track {
+  height: 6px;
+  background: #d0ceea;
+  border-radius: 3px;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #534AB7;
+  margin-top: -14px;
+  border: 3px solid #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+}
+
+.pq-row {
+  display: flex;
+  gap: 1.5rem;
+  font-size: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.dot {
+  display: inline-block;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+.pool-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: 4px;
+}
+
+.chip {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700;
+  border: 1.5px solid transparent;
+  flex-shrink: 0;
+}
+.chip-A { background: #B5D4F4; border-color: #378ADD; color: #042C53; }
+.chip-a { background: #F5C4B3; border-color: #D85A30; color: #4A1B0C; }
+
+/* ── Buttons ── */
+.controls { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1rem; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 10px 18px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  background: #fff;
+  color: #1a1a1a;
+  font-size: 15px;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.btn:active { opacity: 0.6; }
+
+.btn-primary  { background: #EEEDFE; border-color: #AFA9EC; color: #3C3489; font-weight: 700; }
+.btn-reset    { border-color: #D85A30; color: #712B13; }
+.btn-save     { background: #E8F7F1; border-color: #5DCAA5; color: #085041; font-weight: 700; }
+.btn-save.off { background: #f0efe8; border-color: #ccc; color: #aaa; }
+
+/* ── Letztes Paar ── */
+.last-draw {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 48px;
+  padding: 8px 12px;
+  background: #f5f4f0;
+  border-radius: 8px;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.ac {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; font-weight: 700;
+  border: 2px solid transparent;
+  flex-shrink: 0;
+}
+
+/* ── Genotyp-Karten ── */
+.geno-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 0.75rem;
+}
+
+.geno-card {
+  background: #fafaf8;
+  border: 1px solid #d8d6ce;
+  border-radius: 10px;
+  padding: 10px 6px;
+  text-align: center;
+}
+.geno-label { font-size: 13px; color: #666; margin-bottom: 4px; }
+.geno-count { font-size: 28px; font-weight: 700; line-height: 1; }
+.geno-pct   { font-size: 13px; color: #888; margin-top: 3px; }
+.bar-track  { height: 8px; background: #e8e6de; border-radius: 4px; overflow: hidden; margin-top: 6px; }
+.bar-fill   { height: 100%; border-radius: 4px; transition: width 0.25s; }
+
+.draw-count { font-size: 12px; color: #888; text-align: right; margin-bottom: 6px; }
+
+.pq-obs {
+  font-size: 13px; color: #555;
+  padding: 8px 12px;
+  background: #f0effe;
+  border-radius: 8px;
+  border: 1px solid #d0ceea;
+  margin-bottom: 0.75rem;
+}
+
+.sep { height: 1px; background: #e0dfd7; margin: 0.75rem 0; }
+
+.save-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.save-hint { font-size: 13px; color: #888; }
+
+/* ── Tabelle ── */
+.hist-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.hist-table th {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.4px; color: #888;
+  padding: 6px 8px; text-align: center;
+  border-bottom: 1px solid #e0dfd7;
+}
+.hist-table th:first-child { text-align: left; }
+.hist-table td {
+  padding: 10px 8px; text-align: center;
+  border-bottom: 1px solid #eeede5; font-size: 14px;
+}
+.hist-table td:first-child { text-align: left; color: #888; font-size: 13px; }
+.hist-table tr:last-child td { border-bottom: none; }
+.hist-table tr.cur td { background: #EEEDFE; color: #3C3489; font-weight: 700; }
+.hist-table tr.cur td:first-child { color: #534AB7; }
+.hist-empty { font-size: 13px; color: #aaa; text-align: center; padding: 1rem; }
+.info-bar { font-size: 12px; color: #888; margin-top: 0.75rem; line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<!-- Installationshinweis: verschwindet automatisch wenn als PWA -->
+<div class="install-hint" id="installHint">
+  <strong>&#128075; Einmalige Einrichtung f&#252;r beste Nutzung:</strong>
+  Tippe unten auf das Teilen-Symbol &#x2BAD; &#8594; &#8222;Zum Home-Bildschirm&#8220; &#8594; &#8222;Hinzuf&#252;gen&#8220;. Danach startet die Simulation direkt als App.
+</div>
+
+<h1>Hardy-Weinberg &#8212; Simulation</h1>
+
+<!-- Panel 1: Genpool -->
+<div class="panel">
+  <div class="panel-title">Genpool einstellen</div>
+  <div class="slider-wrap">
+    <span class="slider-label">p (Allel A)</span>
+    <input type="range" id="pSlider" min="1" max="99" step="1" value="70">
+    <span class="slider-val" id="pDisp">0,70</span>
+  </div>
+  <div class="pq-row">
+    <span><span class="dot" style="background:#378ADD;"></span>Allel A: <strong id="nA">70</strong> &nbsp; p&#160;=&#160;<strong id="pVal">0,70</strong></span>
+    <span><span class="dot" style="background:#D85A30;"></span>Allel a: <strong id="na">30</strong> &nbsp; q&#160;=&#160;<strong id="qVal">0,30</strong></span>
+  </div>
+  <div class="pool-grid" id="poolGrid"></div>
+  <div class="info-bar">100 Allele im Genpool &#183; Ziehung mit Zur&#252;cklegen</div>
+</div>
+
+<!-- Panel 2: Simulation -->
+<div class="panel">
+  <div class="panel-title">Simulation &#8212; Zuf&#228;llige Paarung</div>
+  <div class="controls">
+    <button class="btn btn-primary" id="btnOne">Ein Individuum</button>
+    <button class="btn btn-primary" id="btnAll">100 Individuen</button>
+    <button class="btn btn-reset"  id="btnReset">Zur&#252;cksetzen</button>
+  </div>
+
+  <div class="last-draw" id="lastDraw">
+    <span style="color:#aaa;font-size:13px;">&#8212; noch keine Ziehung &#8212;</span>
+  </div>
+
+  <div class="geno-grid">
+    <div class="geno-card">
+      <div class="geno-label">AA</div>
+      <div class="geno-count" id="cnt_AA" style="color:#185FA5;">0</div>
+      <div class="geno-pct"   id="pct_AA">&#8212;</div>
+      <div class="bar-track"><div class="bar-fill" id="bar_AA" style="width:0%;background:#378ADD;"></div></div>
+    </div>
+    <div class="geno-card">
+      <div class="geno-label">Aa</div>
+      <div class="geno-count" id="cnt_Aa" style="color:#534AB7;">0</div>
+      <div class="geno-pct"   id="pct_Aa">&#8212;</div>
+      <div class="bar-track"><div class="bar-fill" id="bar_Aa" style="width:0%;background:#7F77DD;"></div></div>
+    </div>
+    <div class="geno-card">
+      <div class="geno-label">aa</div>
+      <div class="geno-count" id="cnt_aa" style="color:#993C1D;">0</div>
+      <div class="geno-pct"   id="pct_aa">&#8212;</div>
+      <div class="bar-track"><div class="bar-fill" id="bar_aa" style="width:0%;background:#D85A30;"></div></div>
+    </div>
+  </div>
+
+  <div class="draw-count" id="drawCount">0 / 100 Individuen</div>
+
+  <div class="pq-obs" id="pqObs" style="display:none;">
+    p&#160;=&#160;<strong id="pObs">&#8212;</strong> &nbsp;&nbsp; q&#160;=&#160;<strong id="qObs">&#8212;</strong>
+  </div>
+
+  <div class="sep"></div>
+  <div class="save-row">
+    <button class="btn btn-save off" id="saveBtn">Durchgang speichern</button>
+    <span class="save-hint" id="saveHint">Ziehe erst alle 100 Individuen</span>
+  </div>
+</div>
+
+<!-- Panel 3: Tabelle -->
+<div class="panel">
+  <div class="panel-title">Ergebnistabelle</div>
+  <div id="histArea"><div class="hist-empty">Noch keine Durchg&#228;nge gespeichert.</div></div>
+  <div class="info-bar">Werte in die Tabelle auf dem Arbeitsblatt &#252;bertragen.</div>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+var p = 0.70;
+var counts = { AA:0, Aa:0, aa:0 };
+var drawn = 0;
+var runs = [];
+var canSave = false;
+
+// ── Hilfsfunktionen ────────────────────────────────────────────────────────
+function fmt(n) { return n.toFixed(2).replace('.', ','); }
+function rnd()  { return Math.random() < p ? 'A' : 'a'; }
+
+function tap(id, fn) {
+  var el = document.getElementById(id);
+  el.addEventListener('touchend', function(e) {
+    e.preventDefault();
+    fn();
+  }, { passive: false });
+  el.addEventListener('click', function(e) {
+    fn();
+  });
+}
+
+// ── Genpool ────────────────────────────────────────────────────────────────
+function updatePool() {
+  var v = parseInt(document.getElementById('pSlider').value, 10);
+  p = v / 100;
+  var q = 1 - p;
+  var nA = v, na = 100 - v;
+
+  document.getElementById('pDisp').textContent = fmt(p);
+  document.getElementById('pVal').textContent  = fmt(p);
+  document.getElementById('qVal').textContent  = fmt(q);
+  document.getElementById('nA').textContent    = nA;
+  document.getElementById('na').textContent    = na;
+
+  var g = document.getElementById('poolGrid');
+  g.innerHTML = '';
+  for (var i = 0; i < 100; i++) {
+    var c = document.createElement('div');
+    c.className = 'chip ' + (i < nA ? 'chip-A' : 'chip-a');
+    c.textContent = i < nA ? 'A' : 'a';
+    g.appendChild(c);
+  }
+}
+
+// Slider: alle relevanten Events abfangen
+var sl = document.getElementById('pSlider');
+sl.addEventListener('input',     updatePool);
+sl.addEventListener('change',    updatePool);
+sl.addEventListener('touchstart',updatePool, { passive: true });
+sl.addEventListener('touchmove', updatePool, { passive: true });
+sl.addEventListener('touchend',  updatePool, { passive: true });
+
+// ── Simulation ─────────────────────────────────────────────────────────────
+function drawOne() {
+  if (drawn >= 100) return;
+  var a1 = rnd(), a2 = rnd();
+  var gt = (a1==='A' && a2==='A') ? 'AA' : (a1==='a' && a2==='a') ? 'aa' : 'Aa';
+  counts[gt]++;
+  drawn++;
+
+  // Letztes Paar anzeigen
+  var ld = document.getElementById('lastDraw');
+  ld.innerHTML = '';
+  function makeChip(a) {
+    var s = document.createElement('span');
+    s.className = 'ac';
+    s.style.background   = a==='A' ? '#B5D4F4' : '#F5C4B3';
+    s.style.borderColor  = a==='A' ? '#378ADD' : '#D85A30';
+    s.style.color        = a==='A' ? '#042C53' : '#4A1B0C';
+    s.textContent = a;
+    return s;
+  }
+  function makeTxt(t, style) {
+    var s = document.createElement('span');
+    s.style.cssText = style || '';
+    s.textContent = t;
+    return s;
+  }
+  ld.appendChild(makeChip(a1));
+  ld.appendChild(makeTxt('+', 'color:#aaa;font-size:20px;'));
+  ld.appendChild(makeChip(a2));
+  ld.appendChild(makeTxt('→', 'color:#aaa;margin:0 4px;'));
+  ld.appendChild(makeTxt('Genotyp ' + gt, 'font-weight:700;'));
+  ld.appendChild(makeTxt('(' + drawn + '/100)', 'font-size:12px;color:#aaa;margin-left:4px;'));
+
+  updateDisplay();
+}
+
+function drawAll()  { while (drawn < 100) drawOne(); }
+
+function resetSim() {
+  counts = { AA:0, Aa:0, aa:0 };
+  drawn = 0;
+  canSave = false;
+  document.getElementById('lastDraw').innerHTML = '<span style="color:#aaa;font-size:13px;">&#8212; noch keine Ziehung &#8212;</span>';
+  document.getElementById('pqObs').style.display = 'none';
+  document.getElementById('saveBtn').className = 'btn btn-save off';
+  document.getElementById('saveHint').textContent = 'Ziehe erst alle 100 Individuen';
+  updateDisplay();
+}
+
+function updateDisplay() {
+  var gts = ['AA','Aa','aa'];
+  for (var i = 0; i < gts.length; i++) {
+    var gt = gts[i];
+    var pct = drawn > 0 ? (counts[gt] / drawn * 100) : 0;
+    document.getElementById('cnt_'+gt).textContent = counts[gt];
+    document.getElementById('pct_'+gt).textContent = drawn > 0 ? pct.toFixed(1)+' %' : '—';
+    document.getElementById('bar_'+gt).style.width = pct.toFixed(1)+'%';
+  }
+  document.getElementById('drawCount').textContent = drawn + ' / 100 Individuen';
+
+  if (drawn === 100) {
+    var pO = (counts.AA * 2 + counts.Aa) / 200;
+    var qO = 1 - pO;
+    document.getElementById('pObs').textContent = pO.toFixed(3).replace('.', ',');
+    document.getElementById('qObs').textContent = qO.toFixed(3).replace('.', ',');
+    document.getElementById('pqObs').style.display = 'block';
+    document.getElementById('saveBtn').className = 'btn btn-save';
+    document.getElementById('saveHint').textContent = 'Ergebnisse speichern';
+    canSave = true;
+  }
+}
+
+function saveDurchgang() {
+  if (!canSave) return;
+  runs.push({
+    nr: runs.length + 1,
+    p:  p,
+    AA: (counts.AA / drawn * 100).toFixed(1),
+    Aa: (counts.Aa / drawn * 100).toFixed(1),
+    aa: (counts.aa / drawn * 100).toFixed(1)
+  });
+  renderHistory();
+  resetSim();
+}
+
+function renderHistory() {
+  var area = document.getElementById('histArea');
+  if (!runs.length) {
+    area.innerHTML = '<div class="hist-empty">Noch keine Durchg&#228;nge gespeichert.</div>';
+    return;
+  }
+  var h = '<table class="hist-table"><thead><tr>'
+    + '<th>Dg.</th>'
+    + '<th><span class="dot" style="background:#378ADD;display:inline-block;width:8px;height:8px;border-radius:50%;"></span> AA</th>'
+    + '<th><span class="dot" style="background:#7F77DD;display:inline-block;width:8px;height:8px;border-radius:50%;"></span> Aa</th>'
+    + '<th><span class="dot" style="background:#D85A30;display:inline-block;width:8px;height:8px;border-radius:50%;"></span> aa</th>'
+    + '<th>p</th>'
+    + '</tr></thead><tbody>';
+  for (var i = 0; i < runs.length; i++) {
+    var r = runs[i];
+    h += '<tr' + (i===runs.length-1 ? ' class="cur"' : '') + '>'
+      + '<td>' + r.nr + '</td>'
+      + '<td>' + r.AA + '%</td>'
+      + '<td>' + r.Aa + '%</td>'
+      + '<td>' + r.aa + '%</td>'
+      + '<td>' + r.p.toFixed(2).replace('.',',') + '</td>'
+      + '</tr>';
+  }
+  h += '</tbody></table>';
+  area.innerHTML = h;
+}
+
+// ── Button-Events ──────────────────────────────────────────────────────────
+tap('btnOne',   drawOne);
+tap('btnAll',   drawAll);
+tap('btnReset', resetSim);
+tap('saveBtn',  saveDurchgang);
+
+// ── PWA: Installationshinweis ausblenden wenn standalone ──────────────────
+if (window.navigator.standalone === true) {
+  var hint = document.getElementById('installHint');
+  if (hint) hint.style.display = 'none';
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+updatePool();
+</script>
+</body>
+</html>
